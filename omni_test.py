@@ -55,7 +55,6 @@ parser.add_argument('--tag', help='tag of experiment')
 parser.add_argument('--eval', action='store_true', help='Perform evaluation only')
 parser.add_argument('--throughput', action='store_true', help='Test throughput only')
 
-parser.add_argument('--task', type=str, default='seg', choices=['seg', 'cls'], help='task type')
 parser.add_argument('--prompt', action='store_true', help='using prompt')
 
 args = parser.parse_args()
@@ -69,10 +68,9 @@ def inference(args, model, test_save_path=None):
     if not os.path.exists("exp_out/result.csv"):
         with open("exp_out/result.csv", 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['dataset', 'task', 'metric A', 'metric B', 'time'])
+            writer.writerow(['dataset', 'task', 'metric', 'time'])
 
-    # seg_test_set = ["BUS-BRA", "BUSIS", "CAMUS", "DDTI", "Fetal_HC", "kidneyUS", "UDIAT"]
-    seg_test_set = ["BUSIS"] # TODO 恢复
+    seg_test_set = ["BUS-BRA", "BUSIS", "CAMUS", "DDTI", "Fetal_HC", "kidneyUS", "UDIAT"]
 
     for dataset_name in seg_test_set:
         num_classes = 2
@@ -137,8 +135,7 @@ def inference(args, model, test_save_path=None):
                 writer.writerow([dataset_name, 'omni_seg@'+args.output_dir, performance,
                                 time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())])
 
-    # cls_test_set = ["Appendix", "BUS-BRA", "Fatty-Liver", "UDIAT"]
-    cls_test_set = ["UDIAT"] # TODO 恢复
+    cls_test_set = ["Appendix", "BUS-BRA", "Fatty-Liver", "UDIAT"]
 
     for dataset_name in cls_test_set:
         num_classes = 2
@@ -156,7 +153,6 @@ def inference(args, model, test_save_path=None):
 
         label_list = []
         prediction_list = []
-        prediction_prob_list = []
         for i_batch, sampled_batch in tqdm(enumerate(testloader)):
             image, label, case_name = sampled_batch["image"], sampled_batch["label"], sampled_batch['case_name'][0]
             if args.prompt:
@@ -170,16 +166,14 @@ def inference(args, model, test_save_path=None):
             else:
                 with torch.no_grad():
                     output = model(image.cuda())[1]
-            output_prob = torch.softmax(output, dim=1).data.cpu().numpy()
-            output = np.argmax(output_prob)
+
+            output = np.argmax(torch.softmax(output, dim=1).data.cpu().numpy())
             logging.info('idx %d case %s label: %d predict: %d' % (i_batch, case_name, label, output))
 
             label_list.append(label.numpy())
-            prediction_prob_list.append(output_prob)
             prediction_list.append(output)
 
         label_list = np.array(label_list)
-        label_list_OneHot = np.eye(num_classes)[label_list].squeeze(1)
         prediction_list = np.array(prediction_list)
         for i in range(num_classes):
             logging.info('class %d acc %f' % (i, accuracy_score(

@@ -8,8 +8,8 @@ UniUSNet is a universal framework for ultrasound image classification and segmen
 
 For more details, see the accompanying paper and [Project Page](https://zehui-lin.github.io/UniUSNet/),
 
-> [**UniUSNet: A Promptable Framework for Universal Ultrasound Disease Prediction and Tissue Segmentation**](https://arxiv.org/abs/2406.01154)<br/>
-  Zehui Lin, Zhuoneng Zhang, Xindi Hu, Zhifan Gao, Xin Yang, Yue Sun, Dong Ni, Tao Tan. <b>Arxiv</b>, Jun 3, 2024. https://arxiv.org/abs/2406.01154
+> [**UniUSNet: A Promptable Framework for Universal Ultrasound Disease Prediction and Tissue Segmentation**](https://doi.org/10.1109/BIBM62325.2024.10822429)<br/>
+  Zehui Lin, Zhuoneng Zhang, Xindi Hu, Zhifan Gao, Xin Yang, Yue Sun, Dong Ni, Tao Tan. <b>BIBM</b>, 2024.
 
 ## Installation
 - Clone this repository.
@@ -83,11 +83,13 @@ python -m torch.distributed.launch --nproc_per_node=1 --master_port=1234 omni_te
 If you find this work useful, please consider citing:
 
 ```
-@article{lin2024uniusnet,
+@inproceedings{lin2024uniusnet,
   title={UniUSNet: A Promptable Framework for Universal Ultrasound Disease Prediction and Tissue Segmentation},
   author={Lin, Zehui and Zhang, Zhuoneng and Hu, Xindi and Gao, Zhifan and Yang, Xin and Sun, Yue and Ni, Dong and Tan, Tao},
-  journal={arXiv preprint arXiv:2406.01154},
-  year={2024}
+  booktitle={2024 IEEE International Conference on Bioinformatics and Biomedicine (BIBM)},
+  pages={3501--3504},
+  year={2024},
+  organization={IEEE}
 }
 ```
 

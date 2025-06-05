@@ -50,9 +50,6 @@ parser.add_argument('--throughput', action='store_true', help='Test throughput o
 
 parser.add_argument('--pretrain_ckpt', type=str, help='pretrained checkpoint')
 
-parser.add_argument('--num_samples_seg', type=int, default=3550)
-parser.add_argument('--num_samples_cls', type=int, default=1978)
-
 parser.add_argument('--prompt', action='store_true', help='using prompt for training')
 parser.add_argument('--adapter_ft', action='store_true', help='using adapter for fine-tuning')
 
