@@ -79,6 +79,19 @@ python -m torch.distributed.launch --nproc_per_node=1 --master_port=1234 omni_te
 ## Checkpoints
 - You can download the pre-trained checkpoints from [BaiduYun](https://pan.baidu.com/s/1uciwM5K4wRiMWnrAsB4qMQ?pwd=x390).
 
+## Pretrained Weights
+
+To train your own model, please download the Swin Transformer backbone weights and place it in the `pretrained_ckpt/` directory:
+
+* [swin\_tiny\_patch4\_window7\_224.pth](https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_tiny_patch4_window7_224.pth)
+
+The folder structure should look like:
+
+```
+pretrained_ckpt
+└── swin_tiny_patch4_window7_224.pth
+```
+
 ## Citation
 If you find this work useful, please consider citing:
 
