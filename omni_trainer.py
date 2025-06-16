@@ -64,7 +64,7 @@ def omni_train(args, model, snapshot_path):
         weights=sample_weight_seq,
         num_replicas=world_size,
         rank=rank,
-        num_samples=args.num_samples_seg,
+        num_samples=len(db_train_seg),
         replacement=True
     )
     trainloader_seg = DataLoader(db_train_seg,
@@ -88,7 +88,7 @@ def omni_train(args, model, snapshot_path):
         weights=sample_weight_seq,
         num_replicas=world_size,
         rank=rank,
-        num_samples=args.num_samples_cls,
+        num_samples=len(db_train_cls),
         replacement=True
     )
     trainloader_cls = DataLoader(db_train_cls,
