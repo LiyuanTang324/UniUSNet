@@ -77,7 +77,8 @@ python -m torch.distributed.launch --nproc_per_node=1 --master_port=1234 omni_te
 
 
 ## Checkpoints
-- You can download the pre-trained checkpoints from [BaiduYun](https://pan.baidu.com/s/1uciwM5K4wRiMWnrAsB4qMQ?pwd=x390) or direct from the [release page](https://github.com/Zehui-Lin/UniUSNet/releases/download/v1.0.0).
+- You can download the pre-trained checkpoints from [BaiduYun](https://pan.baidu.com/s/1uciwM5K4wRiMWnrAsB4qMQ?pwd=x390) or directly from the [release page](https://github.com/Zehui-Lin/UniUSNet/releases/tag/v1.0.0).
+
 
 ## Pretrained Weights
 
