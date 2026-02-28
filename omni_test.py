@@ -21,7 +21,7 @@ from networks.omni_vision_transformer import OmniVisionTransformer as ViT_omni
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str,
-                    default='data_demo/', help='root dir for data')
+                    default='data/', help='root dir for data')
 parser.add_argument('--output_dir', type=str, help='output dir')
 parser.add_argument('--max_epochs', type=int, default=200, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int, default=16,
@@ -61,6 +61,19 @@ args = parser.parse_args()
 config = get_config(args)
 
 
+def discover_dataset_names(root_path, task_name, split):
+    task_root = os.path.join(root_path, task_name)
+    if not os.path.isdir(task_root):
+        return []
+    dataset_names = []
+    for dataset_name in sorted(os.listdir(task_root)):
+        dataset_dir = os.path.join(task_root, dataset_name)
+        split_file = os.path.join(dataset_dir, f"{split}.txt")
+        if os.path.isdir(dataset_dir) and os.path.exists(split_file):
+            dataset_names.append(dataset_name)
+    return dataset_names
+
+
 def inference(args, model, test_save_path=None):
     import csv
     import time
@@ -70,7 +83,7 @@ def inference(args, model, test_save_path=None):
             writer = csv.writer(csvfile)
             writer.writerow(['dataset', 'task', 'metric', 'time'])
 
-    seg_test_set = ["BUS-BRA", "BUSIS", "CAMUS", "DDTI", "Fetal_HC", "kidneyUS", "UDIAT"]
+    seg_test_set = discover_dataset_names(args.root_path, "segmentation", "test")
 
     for dataset_name in seg_test_set:
         num_classes = 2
@@ -135,7 +148,7 @@ def inference(args, model, test_save_path=None):
                 writer.writerow([dataset_name, 'omni_seg@'+args.output_dir, performance,
                                 time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())])
 
-    cls_test_set = ["Appendix", "BUS-BRA", "Fatty-Liver", "UDIAT"]
+    cls_test_set = discover_dataset_names(args.root_path, "classification", "test")
 
     for dataset_name in cls_test_set:
         num_classes = 2

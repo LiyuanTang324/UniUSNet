@@ -21,7 +21,7 @@ position_prompt_dict = {
     "CAMUS": "cardiac",
     "DDTI": "thyroid",
     "Fetal_HC": "head",
-    "kidneyUS": "kidney",
+    "KidneyUS": "kidney",
     "UDIAT": "breast",
     "Appendix": "appendix",
     "Fatty-Liver": "liver",
@@ -34,7 +34,7 @@ nature_prompt_dict = {
     "CAMUS": "organ",
     "DDTI": "tumor",
     "Fetal_HC": "organ",
-    "kidneyUS": "organ",
+    "KidneyUS": "organ",
     "UDIAT": "organ",
     "Appendix": "organ",
     "Fatty-Liver": "organ",
@@ -47,9 +47,9 @@ available_type_prompt_list = [
     "CAMUS",
     "DDTI",
     "Fetal_HC",
-    "kidneyUS",
+    "KidneyUS",
     "UDIAT",
-    "BUSI"
+    "BUSI",
 ]
 
 # prompt one-hot
@@ -90,6 +90,19 @@ def list_add_prefix(txt_path, prefix_1, prefix_2):
         return [os.path.join(prefix_1, prefix_2, line.strip('\n')) for line in lines]
     else:
         return [os.path.join(prefix_1, line.strip('\n')) for line in lines]
+
+
+def list_available_datasets(base_dir, task_name, split):
+    dataset_root = os.path.join(base_dir, task_name)
+    if not os.path.isdir(dataset_root):
+        return []
+    dataset_names = []
+    for dataset_name in sorted(os.listdir(dataset_root)):
+        dataset_dir = os.path.join(dataset_root, dataset_name)
+        split_file = os.path.join(dataset_dir, f"{split}.txt")
+        if os.path.isdir(dataset_dir) and os.path.exists(split_file):
+            dataset_names.append(dataset_name)
+    return dataset_names
 
 
 class WeightedRandomSamplerDDP(DistributedSampler):
@@ -151,35 +164,15 @@ class USdatasetOmni_seg(Dataset):
         self.subset_len = []
         self.prompt = prompt
 
-        self.sample_list.extend(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "BUS-BRA", split + ".txt"), "BUS-BRA", "imgs"))
-        self.sample_list.extend(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "BUSIS", split + ".txt"), "BUSIS", "imgs"))
-        self.sample_list.extend(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "CAMUS", split + ".txt"), "CAMUS", "imgs"))
-        self.sample_list.extend(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "DDTI", split + ".txt"), "DDTI", "imgs"))
-        self.sample_list.extend(list_add_prefix(os.path.join(base_dir, "segmentation",
-                                "Fetal_HC", split + ".txt"), "Fetal_HC", "imgs"))
-        self.sample_list.extend(list_add_prefix(os.path.join(base_dir, "segmentation",
-                                "kidneyUS", split + ".txt"), "kidneyUS", "imgs"))
-        self.sample_list.extend(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "UDIAT", split + ".txt"), "UDIAT", "imgs"))
-
-        self.subset_len.append(len(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "BUS-BRA", split + ".txt"), "BUS-BRA", "imgs")))
-        self.subset_len.append(len(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "BUSIS", split + ".txt"), "BUSIS", "imgs")))
-        self.subset_len.append(len(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "CAMUS", split + ".txt"), "CAMUS", "imgs")))
-        self.subset_len.append(len(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "DDTI", split + ".txt"), "DDTI", "imgs")))
-        self.subset_len.append(len(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "Fetal_HC", split + ".txt"), "Fetal_HC", "imgs")))
-        self.subset_len.append(len(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "kidneyUS", split + ".txt"), "kidneyUS", "imgs")))
-        self.subset_len.append(len(list_add_prefix(os.path.join(
-            base_dir, "segmentation", "UDIAT", split + ".txt"), "UDIAT", "imgs")))
+        self.dataset_names = list_available_datasets(base_dir, "segmentation", split)
+        for dataset_name in self.dataset_names:
+            dataset_samples = list_add_prefix(
+                os.path.join(base_dir, "segmentation", dataset_name, split + ".txt"),
+                dataset_name,
+                "imgs",
+            )
+            self.sample_list.extend(dataset_samples)
+            self.subset_len.append(len(dataset_samples))
 
     def __len__(self):
         return len(self.sample_list)
@@ -245,23 +238,15 @@ class USdatasetOmni_cls(Dataset):
         self.subset_len = []
         self.prompt = prompt
 
-        self.sample_list.extend(list_add_prefix(os.path.join(
-            base_dir, "classification", "Appendix", split + ".txt"), "Appendix", None))
-        self.sample_list.extend(list_add_prefix(os.path.join(
-            base_dir, "classification", "BUS-BRA", split + ".txt"), "BUS-BRA", None))
-        self.sample_list.extend(list_add_prefix(os.path.join(base_dir, "classification",
-                                "Fatty-Liver", split + ".txt"), "Fatty-Liver", None))
-        self.sample_list.extend(list_add_prefix(os.path.join(
-            base_dir, "classification", "UDIAT", split + ".txt"), "UDIAT", None))
-
-        self.subset_len.append(len(list_add_prefix(os.path.join(
-            base_dir, "classification", "Appendix", split + ".txt"), "Appendix", None)))
-        self.subset_len.append(len(list_add_prefix(os.path.join(
-            base_dir, "classification", "BUS-BRA", split + ".txt"), "BUS-BRA", None)))
-        self.subset_len.append(len(list_add_prefix(os.path.join(base_dir, "classification",
-                               "Fatty-Liver", split + ".txt"), "Fatty-Liver", None)))
-        self.subset_len.append(len(list_add_prefix(os.path.join(
-            base_dir, "classification", "UDIAT", split + ".txt"), "UDIAT", None)))
+        self.dataset_names = list_available_datasets(base_dir, "classification", split)
+        for dataset_name in self.dataset_names:
+            dataset_samples = list_add_prefix(
+                os.path.join(base_dir, "classification", dataset_name, split + ".txt"),
+                dataset_name,
+                None,
+            )
+            self.sample_list.extend(dataset_samples)
+            self.subset_len.append(len(dataset_samples))
 
     def __len__(self):
         return len(self.sample_list)

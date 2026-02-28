@@ -131,9 +131,6 @@ class USdatasetSeg(Dataset):
         self.split = split
         self.sample_list = open(os.path.join(list_dir, self.split+'.txt')).readlines()
 
-        # BUSI
-        self.sample_list = [sample for sample in self.sample_list if not "normal" in sample]
-
         self.data_dir = base_dir
         self.label_info = open(os.path.join(list_dir, "config.yaml")).readlines()
         self.prompt = prompt
@@ -175,9 +172,6 @@ class USdatasetCls(Dataset):
         self.transform = transform  # using transform in torch!
         self.split = split
         self.sample_list = open(os.path.join(list_dir, self.split+'.txt')).readlines()
-
-        # BUSI
-        self.sample_list = [sample for sample in self.sample_list if not "normal" in sample]
 
         self.data_dir = base_dir
         self.label_info = open(os.path.join(list_dir, "config.yaml")).readlines()

@@ -10,12 +10,12 @@ from config import get_config
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str,
-                    default='data_demo/', help='root dir for data')
+                    default='data/', help='root dir for data')
 parser.add_argument('--output_dir', type=str, help='output dir')
 parser.add_argument('--max_epochs', type=int,
                     default=200, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int,
-                    default=16, help='batch_size per gpu')
+                    default=32, help='batch_size per gpu')
 parser.add_argument('--gpu', type=str, default=None)
 parser.add_argument('--deterministic', type=int,  default=1,
                     help='whether use deterministic training')

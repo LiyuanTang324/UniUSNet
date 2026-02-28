@@ -25,6 +25,27 @@ from sklearn.metrics import roc_auc_score
 from utils import omni_seg_test
 
 
+def discover_dataset_names(root_path, task_name, split):
+    task_root = os.path.join(root_path, task_name)
+    if not os.path.isdir(task_root):
+        return []
+    dataset_names = []
+    for dataset_name in sorted(os.listdir(task_root)):
+        dataset_dir = os.path.join(task_root, dataset_name)
+        split_file = os.path.join(dataset_dir, f"{split}.txt")
+        if os.path.isdir(dataset_dir) and os.path.exists(split_file):
+            dataset_names.append(dataset_name)
+    return dataset_names
+
+
+def build_sample_weights(dataset_names, subset_len, weight_map, default_weight=1.0):
+    sample_weight_seq = []
+    for dataset_name, subset_size in zip(dataset_names, subset_len):
+        dataset_weight = weight_map.get(dataset_name, default_weight)
+        sample_weight_seq.extend([dataset_weight] * subset_size)
+    return sample_weight_seq
+
+
 def omni_train(args, model, snapshot_path):
 
     if args.gpu:
@@ -53,11 +74,22 @@ def omni_train(args, model, snapshot_path):
 
     db_train_seg = USdatasetOmni_seg(base_dir=args.root_path, split="train", transform=transforms.Compose(
         [RandomGenerator(output_size=[args.img_size, args.img_size])]), prompt=args.prompt)
+    if len(db_train_seg.subset_len) == 0:
+        raise ValueError("No segmentation datasets found with train.txt under data/segmentation.")
 
-    weight_base = [1/4, 1/2, 2, 2, 1, 2, 2]
-    sample_weight_seq = [[weight_base[dataset_index]] *
-                         element for dataset_index, element in enumerate(db_train_seg.subset_len)]
-    sample_weight_seq = [element for sublist in sample_weight_seq for element in sublist]
+    # Keep UniUSNet legacy weighting effect while supporting dynamic dataset discovery.
+    seg_weight_map = {
+        "BUS-BRA": 1 / 4,
+        "BUSIS": 1 / 2,
+        "CAMUS": 2,
+        "DDTI": 2,
+        "Fetal_HC": 1,
+        "KidneyUS": 2,
+        "UDIAT": 2,
+    }
+    sample_weight_seq = build_sample_weights(
+        db_train_seg.dataset_names, db_train_seg.subset_len, seg_weight_map, default_weight=1.0
+    )
 
     weighted_sampler_seg = WeightedRandomSamplerDDP(
         data_set=db_train_seg,
@@ -77,11 +109,18 @@ def omni_train(args, model, snapshot_path):
 
     db_train_cls = USdatasetOmni_cls(base_dir=args.root_path, split="train", transform=transforms.Compose(
         [RandomGenerator(output_size=[args.img_size, args.img_size])]), prompt=args.prompt)
+    if len(db_train_cls.subset_len) == 0:
+        raise ValueError("No classification datasets found with train.txt under data/classification.")
 
-    weight_base = [2, 1/4, 2, 2]
-    sample_weight_seq = [[weight_base[dataset_index]] *
-                         element for dataset_index, element in enumerate(db_train_cls.subset_len)]
-    sample_weight_seq = [element for sublist in sample_weight_seq for element in sublist]
+    cls_weight_map = {
+        "Appendix": 2,
+        "BUS-BRA": 1 / 4,
+        "Fatty-Liver": 2,
+        "UDIAT": 2,
+    }
+    sample_weight_seq = build_sample_weights(
+        db_train_cls.dataset_names, db_train_cls.subset_len, cls_weight_map, default_weight=1.0
+    )
 
     weighted_sampler_cls = WeightedRandomSamplerDDP(
         data_set=db_train_cls,
@@ -230,7 +269,7 @@ def omni_train(args, model, snapshot_path):
             model.eval()
             total_performance = 0.0
 
-            seg_val_set = ["BUS-BRA", "BUSIS", "CAMUS", "DDTI", "Fetal_HC", "kidneyUS", "UDIAT"]
+            seg_val_set = discover_dataset_names(args.root_path, "segmentation", "val")
             seg_avg_performance = 0.0
 
             for dataset_name in seg_val_set:
@@ -281,11 +320,11 @@ def omni_train(args, model, snapshot_path):
 
                 seg_avg_performance += performance
 
-            seg_avg_performance = seg_avg_performance / len(seg_val_set)
+            seg_avg_performance = seg_avg_performance / (len(seg_val_set) + 1e-6)
             total_performance += seg_avg_performance
             writer.add_scalar('info/val_metric_seg_Total', seg_avg_performance, epoch_num)
 
-            cls_val_set = ["Appendix", "BUS-BRA", "Fatty-Liver", "UDIAT"]
+            cls_val_set = discover_dataset_names(args.root_path, "classification", "val")
             cls_avg_performance = 0.0
 
             for dataset_name in cls_val_set:
@@ -319,6 +358,7 @@ def omni_train(args, model, snapshot_path):
                     else:
                         with torch.no_grad():
                             output = model(image.cuda())[1]
+                    # output shape is [B, C], so softmax should be on class dimension.
                     output_prob = torch.softmax(output, dim=1).data.cpu().numpy()
 
                     label_list.append(label.numpy())
@@ -327,14 +367,18 @@ def omni_train(args, model, snapshot_path):
                 label_list = np.expand_dims(np.concatenate(
                     (np.array(label_list[:-1]).flatten(), np.array(label_list[-1]).flatten())), axis=1).astype('uint8')
                 label_list_OneHot = np.eye(num_classes)[label_list].squeeze(1)
-                performance = roc_auc_score(label_list_OneHot, np.concatenate(
-                    (np.array(prediction_prob_list[:-1]).reshape(-1, 2), prediction_prob_list[-1])), multi_class='ovo')
+                try:
+                    performance = roc_auc_score(label_list_OneHot, np.concatenate(
+                        (np.array(prediction_prob_list[:-1]).reshape(-1, 2), prediction_prob_list[-1])), multi_class='ovo')
+                except ValueError:
+                    # For tiny subsets, val split may contain only one class.
+                    performance = 0.5
 
                 writer.add_scalar('info/val_cls_metric_{}'.format(dataset_name), performance, epoch_num)
 
                 cls_avg_performance += performance
 
-            cls_avg_performance = cls_avg_performance / len(cls_val_set)
+            cls_avg_performance = cls_avg_performance / (len(cls_val_set) + 1e-6)
             total_performance += cls_avg_performance
             writer.add_scalar('info/val_metric_cls_Total', cls_avg_performance, epoch_num)
 
