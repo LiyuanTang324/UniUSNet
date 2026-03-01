@@ -205,23 +205,23 @@ class USdatasetOmni_seg(Dataset):
                     image = image
                     label = label
                     sample = {'image': image/255.0, 'label': label}
-                    sample['type_prompt'] = type_prompt_one_hot_dict["whole"]
+                    sample['type_prompt'] = torch.FloatTensor(type_prompt_one_hot_dict["whole"])
                 else:
                     image = image[y:y+length, x:x+length, :]
                     label = label[y:y+length, x:x+length]
                     sample = {'image': image/255.0, 'label': label}
-                    sample['type_prompt'] = type_prompt_one_hot_dict["local"]
+                    sample['type_prompt'] = torch.FloatTensor(type_prompt_one_hot_dict["local"])
 
             else:
                 sample = {'image': image/255.0, 'label': label}
-                sample['type_prompt'] = type_prompt_one_hot_dict["whole"]
+                sample['type_prompt'] = torch.FloatTensor(type_prompt_one_hot_dict["whole"])
                 pass
         if self.transform:
             sample = self.transform(sample)
         sample['case_name'] = self.sample_list[idx].strip('\n')
-        sample['nature_prompt'] = nature_prompt_one_hot_dict[nature_prompt_dict[dataset_name]]
-        sample['position_prompt'] = position_prompt_one_hot_dict[position_prompt_dict[dataset_name]]
-        sample['task_prompt'] = task_prompt_one_hot_dict["segmentation"]
+        sample['nature_prompt'] = torch.FloatTensor(nature_prompt_one_hot_dict[nature_prompt_dict[dataset_name]])
+        sample['position_prompt'] = torch.FloatTensor(position_prompt_one_hot_dict[position_prompt_dict[dataset_name]])
+        sample['task_prompt'] = torch.FloatTensor(task_prompt_one_hot_dict["segmentation"])
 
         return sample
 
@@ -266,7 +266,7 @@ class USdatasetOmni_cls(Dataset):
                                          "/".join([img_name.split("/")[0], "masks", img_name.split("/")[2]]))
                 if random_number < 0.3:
                     sample = {'image': image/255.0, 'label': np.zeros(image.shape[:2])}
-                    sample['type_prompt'] = type_prompt_one_hot_dict["whole"]
+                    sample['type_prompt'] = torch.FloatTensor(type_prompt_one_hot_dict["whole"])
                 elif random_number < 0.6:
                     mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
                     x, y, w, h = cv2.boundingRect(mask)
@@ -274,26 +274,26 @@ class USdatasetOmni_cls(Dataset):
 
                     if 0 in image[y:y+length, x:x+length, :].shape:
                         sample = {'image': image/255.0, 'label': np.zeros(image.shape[:2])}
-                        sample['type_prompt'] = type_prompt_one_hot_dict["whole"]
+                        sample['type_prompt'] = torch.FloatTensor(type_prompt_one_hot_dict["whole"])
                     else:
                         image = image[y:y+length, x:x+length, :]
                         sample = {'image': image/255.0, 'label': np.zeros(image.shape[:2])}
-                        sample['type_prompt'] = type_prompt_one_hot_dict["local"]
+                        sample['type_prompt'] = torch.FloatTensor(type_prompt_one_hot_dict["local"])
                 else:
                     mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
                     mask[mask > 0] = 255
                     image = image + (np.expand_dims(mask, axis=2)*0.1).astype('uint8')
                     sample = {'image': image/255.0, 'label': np.zeros(image.shape[:2])}
-                    sample['type_prompt'] = type_prompt_one_hot_dict["location"]
+                    sample['type_prompt'] = torch.FloatTensor(type_prompt_one_hot_dict["location"])
             else:
                 sample = {'image': image/255.0, 'label': np.zeros(image.shape[:2])}
-                sample['type_prompt'] = type_prompt_one_hot_dict["whole"]
+                sample['type_prompt'] = torch.FloatTensor(type_prompt_one_hot_dict["whole"])
         if self.transform:
             sample = self.transform(sample)
         sample['label'] = torch.from_numpy(np.array(label))
         sample['case_name'] = self.sample_list[idx].strip('\n')
-        sample['nature_prompt'] = nature_prompt_one_hot_dict[nature_prompt_dict[dataset_name]]
-        sample['position_prompt'] = position_prompt_one_hot_dict[position_prompt_dict[dataset_name]]
-        sample['task_prompt'] = task_prompt_one_hot_dict["classification"]
+        sample['nature_prompt'] = torch.FloatTensor(nature_prompt_one_hot_dict[nature_prompt_dict[dataset_name]])
+        sample['position_prompt'] = torch.FloatTensor(position_prompt_one_hot_dict[position_prompt_dict[dataset_name]])
+        sample['task_prompt'] = torch.FloatTensor(task_prompt_one_hot_dict["classification"])
 
         return sample

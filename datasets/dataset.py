@@ -161,9 +161,9 @@ class USdatasetSeg(Dataset):
         sample['case_name'] = self.sample_list[idx].strip('\n')
         if self.prompt:
             dataset_name = img_path.split("/")[-3]
-            sample['type_prompt'] = type_prompt_one_hot_dict["whole"]
-            sample['nature_prompt'] = nature_prompt_one_hot_dict[nature_prompt_dict[dataset_name]]
-            sample['position_prompt'] = position_prompt_one_hot_dict[position_prompt_dict[dataset_name]]
+            sample['type_prompt'] = torch.FloatTensor(type_prompt_one_hot_dict["whole"])
+            sample['nature_prompt'] = torch.FloatTensor(nature_prompt_one_hot_dict[nature_prompt_dict[dataset_name]])
+            sample['position_prompt'] = torch.FloatTensor(position_prompt_one_hot_dict[position_prompt_dict[dataset_name]])
         return sample
 
 
@@ -195,7 +195,7 @@ class USdatasetCls(Dataset):
         sample['case_name'] = self.sample_list[idx].strip('\n')
         if self.prompt:
             dataset_name = img_path.split("/")[-3]
-            sample['type_prompt'] = type_prompt_one_hot_dict["whole"]
-            sample['nature_prompt'] = nature_prompt_one_hot_dict[nature_prompt_dict[dataset_name]]
-            sample['position_prompt'] = position_prompt_one_hot_dict[position_prompt_dict[dataset_name]]
+            sample['type_prompt'] = torch.FloatTensor(type_prompt_one_hot_dict["whole"])
+            sample['nature_prompt'] = torch.FloatTensor(nature_prompt_one_hot_dict[nature_prompt_dict[dataset_name]])
+            sample['position_prompt'] = torch.FloatTensor(position_prompt_one_hot_dict[position_prompt_dict[dataset_name]])
         return sample

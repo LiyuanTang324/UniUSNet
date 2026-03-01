@@ -103,10 +103,10 @@ def inference(args, model, test_save_path=None):
         for i_batch, sampled_batch in tqdm(enumerate(testloader)):
             image, label, case_name = sampled_batch["image"], sampled_batch["label"], sampled_batch['case_name'][0]
             if args.prompt:
-                position_prompt = torch.tensor(np.array(sampled_batch['position_prompt'])).permute([1, 0]).float()
-                task_prompt = torch.tensor(np.array([[1], [0]])).permute([1, 0]).float()
-                type_prompt = torch.tensor(np.array(sampled_batch['type_prompt'])).permute([1, 0]).float()
-                nature_prompt = torch.tensor(np.array(sampled_batch['nature_prompt'])).permute([1, 0]).float()
+                position_prompt = sampled_batch['position_prompt'].float()
+                task_prompt = torch.FloatTensor([[1, 0]]).expand(position_prompt.shape[0], -1)
+                type_prompt = sampled_batch['type_prompt'].float()
+                nature_prompt = sampled_batch['nature_prompt'].float()
                 metric_i = omni_seg_test(image, label, model,
                                          classes=num_classes,
                                          test_save_path=test_save_path,
@@ -169,10 +169,10 @@ def inference(args, model, test_save_path=None):
         for i_batch, sampled_batch in tqdm(enumerate(testloader)):
             image, label, case_name = sampled_batch["image"], sampled_batch["label"], sampled_batch['case_name'][0]
             if args.prompt:
-                position_prompt = torch.tensor(np.array(sampled_batch['position_prompt'])).permute([1, 0]).float()
-                task_prompt = torch.tensor(np.array([[0], [1]])).permute([1, 0]).float()
-                type_prompt = torch.tensor(np.array(sampled_batch['type_prompt'])).permute([1, 0]).float()
-                nature_prompt = torch.tensor(np.array(sampled_batch['nature_prompt'])).permute([1, 0]).float()
+                position_prompt = sampled_batch['position_prompt'].float()
+                task_prompt = torch.FloatTensor([[0, 1]]).expand(position_prompt.shape[0], -1)
+                type_prompt = sampled_batch['type_prompt'].float()
+                nature_prompt = sampled_batch['nature_prompt'].float()
                 with torch.no_grad():
                     output = model((image.cuda(), position_prompt.cuda(), task_prompt.cuda(),
                                    type_prompt.cuda(), nature_prompt.cuda()))[1]

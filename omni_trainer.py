@@ -181,14 +181,10 @@ def omni_train(args, model, snapshot_path):
             image_batch, label_batch = sampled_batch['image'], sampled_batch['label']
             image_batch, label_batch = image_batch.to(device=device), label_batch.to(device=device)
             if args.prompt:
-                position_prompt = torch.tensor(np.array(sampled_batch['position_prompt'])).permute([
-                    1, 0]).float().to(device=device)
-                task_prompt = torch.tensor(np.array(sampled_batch['task_prompt'])).permute([
-                    1, 0]).float().to(device=device)
-                type_prompt = torch.tensor(np.array(sampled_batch['type_prompt'])).permute([
-                    1, 0]).float().to(device=device)
-                nature_prompt = torch.tensor(np.array(sampled_batch['nature_prompt'])).permute([
-                    1, 0]).float().to(device=device)
+                position_prompt = sampled_batch['position_prompt'].to(device=device)
+                task_prompt = sampled_batch['task_prompt'].to(device=device)
+                type_prompt = sampled_batch['type_prompt'].to(device=device)
+                nature_prompt = sampled_batch['nature_prompt'].to(device=device)
                 (x_seg, _) = model((image_batch, position_prompt, task_prompt, type_prompt, nature_prompt))
             else:
                 (x_seg, _) = model(image_batch)
@@ -218,14 +214,10 @@ def omni_train(args, model, snapshot_path):
             image_batch, label_batch = sampled_batch['image'], sampled_batch['label']
             image_batch, label_batch = image_batch.to(device=device), label_batch.to(device=device)
             if args.prompt:
-                position_prompt = torch.tensor(np.array(sampled_batch['position_prompt'])).permute([
-                    1, 0]).float().to(device=device)
-                task_prompt = torch.tensor(np.array(sampled_batch['task_prompt'])).permute([
-                    1, 0]).float().to(device=device)
-                type_prompt = torch.tensor(np.array(sampled_batch['type_prompt'])).permute([
-                    1, 0]).float().to(device=device)
-                nature_prompt = torch.tensor(np.array(sampled_batch['nature_prompt'])).permute([
-                    1, 0]).float().to(device=device)
+                position_prompt = sampled_batch['position_prompt'].to(device=device)
+                task_prompt = sampled_batch['task_prompt'].to(device=device)
+                type_prompt = sampled_batch['type_prompt'].to(device=device)
+                nature_prompt = sampled_batch['nature_prompt'].to(device=device)
                 (_, x_cls) = model((image_batch, position_prompt, task_prompt, type_prompt, nature_prompt))
             else:
                 (_, x_cls) = model(image_batch)
@@ -287,12 +279,10 @@ def omni_train(args, model, snapshot_path):
                 for i_batch, sampled_batch in tqdm(enumerate(val_loader)):
                     image, label = sampled_batch["image"], sampled_batch["label"]
                     if args.prompt:
-                        position_prompt = torch.tensor(
-                            np.array(sampled_batch['position_prompt'])).permute([1, 0]).float()
-                        task_prompt = torch.tensor(
-                            np.array([[1]*position_prompt.shape[0], [0]*position_prompt.shape[0]])).permute([1, 0]).float()
-                        type_prompt = torch.tensor(np.array(sampled_batch['type_prompt'])).permute([1, 0]).float()
-                        nature_prompt = torch.tensor(np.array(sampled_batch['nature_prompt'])).permute([1, 0]).float()
+                        position_prompt = sampled_batch['position_prompt'].float()
+                        task_prompt = torch.FloatTensor([[1, 0]]).expand(position_prompt.shape[0], -1)
+                        type_prompt = sampled_batch['type_prompt'].float()
+                        nature_prompt = sampled_batch['nature_prompt'].float()
                         metric_i = omni_seg_test(image, label, model,
                                                  classes=num_classes,
                                                  prompt=args.prompt,
@@ -344,12 +334,10 @@ def omni_train(args, model, snapshot_path):
                 for i_batch, sampled_batch in tqdm(enumerate(val_loader)):
                     image, label = sampled_batch["image"], sampled_batch["label"]
                     if args.prompt:
-                        position_prompt = torch.tensor(
-                            np.array(sampled_batch['position_prompt'])).permute([1, 0]).float()
-                        task_prompt = torch.tensor(
-                            np.array([[0]*position_prompt.shape[0], [1]*position_prompt.shape[0]])).permute([1, 0]).float()
-                        type_prompt = torch.tensor(np.array(sampled_batch['type_prompt'])).permute([1, 0]).float()
-                        nature_prompt = torch.tensor(np.array(sampled_batch['nature_prompt'])).permute([1, 0]).float()
+                        position_prompt = sampled_batch['position_prompt'].float()
+                        task_prompt = torch.FloatTensor([[0, 1]]).expand(position_prompt.shape[0], -1)
+                        type_prompt = sampled_batch['type_prompt'].float()
+                        nature_prompt = sampled_batch['nature_prompt'].float()
                         with torch.no_grad():
                             output = model((image.cuda(), position_prompt.cuda(), task_prompt.cuda(),
                                            type_prompt.cuda(), nature_prompt.cuda()))[1]
