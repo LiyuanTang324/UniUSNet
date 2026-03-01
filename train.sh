@@ -1,0 +1,16 @@
+export CUDA_VISIBLE_DEVICES=0
+
+python -m torch.distributed.launch \
+    --use_env \
+    --nproc_per_node=1 \
+    --master_port=12345 \
+    omni_train.py \
+    --root_path=../../data \
+    --output_dir=exp_out/trial_1 \
+    --cfg=configs/swin_tiny_patch4_window8_256_lite.yaml \
+    --max_epochs=200 \
+    --batch_size=32 \
+    --base_lr=0.01 \
+    --seed=1234 \
+    --prompt
+

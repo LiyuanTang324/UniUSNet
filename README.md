@@ -11,10 +11,14 @@ For more details, see the accompanying paper and [Project Page](https://zehui-li
 > [**UniUSNet: A Promptable Framework for Universal Ultrasound Disease Prediction and Tissue Segmentation**](https://doi.org/10.1109/BIBM62325.2024.10822429)<br/>
   Zehui Lin, Zhuoneng Zhang, Xindi Hu, Zhifan Gao, Xin Yang, Yue Sun, Dong Ni, Tao Tan. <b>BIBM</b>, 2024.
 
+This directory contains third-party code. I made a few necessary adjustments for our project integration.
+
+(Reserved for a detailed list of changes.)
+
 ## Installation
 - Clone this repository.
 ```
-git clone https://github.com/Zehui-Lin/UniUSNet.git
+git clone https://github.com/LiyuanTang324/UniUSNet.git
 cd UniUSNet
 ```
 - Create a new conda environment.
@@ -29,13 +33,13 @@ pip install -r requirements.txt
 
 ## Data
 
-- BroadUS-9.7K consists of ten publicly-available datasets, including [BUSI](https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset), [BUSIS](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9025635/), [UDIAT](https://ieeexplore.ieee.org/abstract/document/8003418), [BUS-BRA](https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.16812), [Fatty-Liver](https://link.springer.com/article/10.1007/s11548-018-1843-2#Sec8), [kidneyUS](http://rsingla.ca/kidneyUS/), [DDTI](https://www.kaggle.com/datasets/dasmehdixtr/ddti-thyroid-ultrasound-images/data), [Fetal HC](https://hc18.grand-challenge.org/), [CAMUS](https://www.creatis.insa-lyon.fr/Challenge/camus/index.html) and [Appendix](https://zenodo.org/records/7669442).
+- The data used here is a subset of the public datasets used in UniUSNet, including [BUSI](https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset), [BUSIS](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9025635/), [BUS-BRA](https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.16812), [Fatty-Liver](https://link.springer.com/article/10.1007/s11548-018-1843-2#Sec8), [kidneyUS](http://rsingla.ca/kidneyUS/), [DDTI](https://www.kaggle.com/datasets/dasmehdixtr/ddti-thyroid-ultrasound-images/data), [Fetal HC](https://hc18.grand-challenge.org/), [CAMUS](https://www.creatis.insa-lyon.fr/Challenge/camus/index.html) and [Appendix](https://zenodo.org/records/7669442) (excluding UDIAT).
 - You can prepare the data by downloading the datasets and organizing them as follows:
 
 ```
 data
 ├── classification
-│   └── UDIAT
+│   └── Fatty-Liver
 │       ├── 0
 │       │   ├── 000001.png
 │       │   ├── ...
