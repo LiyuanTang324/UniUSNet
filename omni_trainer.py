@@ -85,7 +85,6 @@ def omni_train(args, model, snapshot_path):
         "DDTI": 2,
         "Fetal_HC": 1,
         "KidneyUS": 2,
-        "UDIAT": 2,
     }
     sample_weight_seq = build_sample_weights(
         db_train_seg.dataset_names, db_train_seg.subset_len, seg_weight_map, default_weight=1.0
@@ -116,7 +115,6 @@ def omni_train(args, model, snapshot_path):
         "Appendix": 2,
         "BUS-BRA": 1 / 4,
         "Fatty-Liver": 2,
-        "UDIAT": 2,
     }
     sample_weight_seq = build_sample_weights(
         db_train_cls.dataset_names, db_train_cls.subset_len, cls_weight_map, default_weight=1.0

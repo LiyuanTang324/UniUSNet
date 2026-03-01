@@ -22,7 +22,6 @@ position_prompt_dict = {
     "DDTI": "thyroid",
     "Fetal_HC": "head",
     "KidneyUS": "kidney",
-    "UDIAT": "breast",
     "Appendix": "appendix",
     "Fatty-Liver": "liver",
     "BUSI": "breast",
@@ -35,7 +34,6 @@ nature_prompt_dict = {
     "DDTI": "tumor",
     "Fetal_HC": "organ",
     "KidneyUS": "organ",
-    "UDIAT": "organ",
     "Appendix": "organ",
     "Fatty-Liver": "organ",
     "BUSI": "tumor",
@@ -48,7 +46,6 @@ available_type_prompt_list = [
     "DDTI",
     "Fetal_HC",
     "KidneyUS",
-    "UDIAT",
     "BUSI",
 ]
 

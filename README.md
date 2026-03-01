@@ -33,7 +33,7 @@ pip install -r requirements.txt
 
 ## Data
 
-- The data used here is a subset of the public datasets used in UniUSNet, including [BUSI](https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset), [BUSIS](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9025635/), [BUS-BRA](https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.16812), [Fatty-Liver](https://link.springer.com/article/10.1007/s11548-018-1843-2#Sec8), [kidneyUS](http://rsingla.ca/kidneyUS/), [DDTI](https://www.kaggle.com/datasets/dasmehdixtr/ddti-thyroid-ultrasound-images/data), [Fetal HC](https://hc18.grand-challenge.org/), [CAMUS](https://www.creatis.insa-lyon.fr/Challenge/camus/index.html) and [Appendix](https://zenodo.org/records/7669442) (excluding UDIAT).
+- The data used here is a subset of the public datasets used in UniUSNet, including [BUSI](https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset), [BUSIS](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9025635/), [BUS-BRA](https://aapm.onlinelibrary.wiley.com/doi/abs/10.1002/mp.16812), [Fatty-Liver](https://link.springer.com/article/10.1007/s11548-018-1843-2#Sec8), [kidneyUS](http://rsingla.ca/kidneyUS/), [DDTI](https://www.kaggle.com/datasets/dasmehdixtr/ddti-thyroid-ultrasound-images/data), [Fetal HC](https://hc18.grand-challenge.org/), [CAMUS](https://www.creatis.insa-lyon.fr/Challenge/camus/index.html) and [Appendix](https://zenodo.org/records/7669442).
 - You can prepare the data by downloading the datasets and organizing them as follows:
 
 ```
