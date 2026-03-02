@@ -6,7 +6,7 @@ python -m torch.distributed.launch \
     --master_port=12345 \
     omni_train.py \
     --root_path=../../data \
-    --output_dir=exp_out/dua_20260302_sd42 \
+    --output_dir=exp_out/dua_20260301_sd42 \
     --cfg=configs/swin_tiny_patch4_window8_256_lite.yaml \
     --max_epochs=200 \
     --batch_size=32 \
