@@ -100,7 +100,7 @@ def omni_train(args, model, snapshot_path):
     )
     trainloader_seg = DataLoader(db_train_seg,
                                  batch_size=batch_size,
-                                 num_workers=16,
+                                 num_workers=8,
                                  pin_memory=True,
                                  worker_init_fn=worker_init_fn,
                                  sampler=weighted_sampler_seg
@@ -130,7 +130,7 @@ def omni_train(args, model, snapshot_path):
     )
     trainloader_cls = DataLoader(db_train_cls,
                                  batch_size=batch_size,
-                                 num_workers=16,
+                                 num_workers=8,
                                  pin_memory=True,
                                  worker_init_fn=worker_init_fn,
                                  sampler=weighted_sampler_cls

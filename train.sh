@@ -10,7 +10,7 @@ python -m torch.distributed.launch \
     --cfg=configs/swin_tiny_patch4_window8_256_lite.yaml \
     --max_epochs=200 \
     --batch_size=32 \
-    --base_lr=0.01 \
+    --base_lr=3e-4 \
     --seed=42 \
     --prompt
 
