@@ -273,7 +273,7 @@ def omni_train(args, model, snapshot_path):
                     transform=CenterCropGenerator(output_size=[args.img_size, args.img_size]),
                     prompt=args.prompt
                 )
-                val_loader = DataLoader(db_val, batch_size=batch_size, shuffle=False, num_workers=8)
+                val_loader = DataLoader(db_val, batch_size=1, shuffle=False, num_workers=8)
                 logging.info("{} val iterations per epoch".format(len(val_loader)))
 
                 metric_list = 0.0
@@ -327,7 +327,7 @@ def omni_train(args, model, snapshot_path):
                     prompt=args.prompt
                 )
 
-                val_loader = DataLoader(db_val, batch_size=batch_size, shuffle=False, num_workers=8)
+                val_loader = DataLoader(db_val, batch_size=1, shuffle=False, num_workers=8)
                 logging.info("{} val iterations per epoch".format(len(val_loader)))
                 model.eval()
 
