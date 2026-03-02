@@ -80,6 +80,7 @@ def omni_train(args, model, snapshot_path):
     # Keep UniUSNet legacy weighting effect while supporting dynamic dataset discovery.
     seg_weight_map = {
         "BUS-BRA": 1 / 4,
+        "BUSI": 1 / 4,
         "BUSIS": 1 / 2,
         "CAMUS": 2,
         "DDTI": 2,
@@ -114,6 +115,7 @@ def omni_train(args, model, snapshot_path):
     cls_weight_map = {
         "Appendix": 2,
         "BUS-BRA": 1 / 4,
+        "BUSI": 1 / 2,
         "Fatty-Liver": 2,
     }
     sample_weight_seq = build_sample_weights(
