@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from medpy import metric
+from medpy.metric.binary import hd95 as medpy_hd95, jc as medpy_jc
 import torch.nn as nn
 import cv2
 
@@ -45,17 +46,22 @@ class DiceLoss(nn.Module):
 
 
 def calculate_metric_percase(pred, gt):
+    """Return (dice, iou, hd95, valid_flag) for a single class binary pair."""
     pred[pred > 0] = 1
     gt[gt > 0] = 1
     if pred.sum() > 0 and gt.sum() > 0:
         dice = metric.binary.dc(pred, gt)
-        return dice, True
+        iou = medpy_jc(pred, gt)
+        hd95 = medpy_hd95(pred, gt)
+        return dice, iou, hd95, True
     elif pred.sum() > 0 and gt.sum() == 0:
-        return 0, False
+        diag = np.sqrt(np.sum([s ** 2 for s in pred.shape]))
+        return 0, 0, diag, False
     elif pred.sum() == 0 and gt.sum() > 0:
-        return 0, True
+        diag = np.sqrt(np.sum([s ** 2 for s in pred.shape]))
+        return 0, 0, diag, True
     else:
-        return 0, False
+        return 0, 0, 0, False
 
 
 def omni_seg_test(image, label, net, classes, ClassStartIndex=1, test_save_path=None, case=None,
@@ -85,7 +91,7 @@ def omni_seg_test(image, label, net, classes, ClassStartIndex=1, test_save_path=
         prediction = out.cpu().detach().numpy()
 
     metric_list = []
-    for i in range(1, classes): # 这里的第二个维度的含义不一样，这里是类别数
+    for i in range(1, classes):
         metric_list.append(calculate_metric_percase(prediction == i, label == i))
 
     if test_save_path is not None:

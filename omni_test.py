@@ -15,7 +15,7 @@ from datasets.dataset import CenterCropGenerator
 from datasets.dataset import USdatasetCls, USdatasetSeg
 
 from utils import omni_seg_test
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_auc_score, f1_score, roc_curve
 
 from networks.omni_vision_transformer import OmniVisionTransformer as ViT_omni
 
@@ -98,7 +98,9 @@ def inference(args, model, test_save_path=None):
         logging.info("{} test iterations per epoch".format(len(testloader)))
         model.eval()
 
-        metric_list = 0.0
+        dice_list = 0.0
+        iou_list = 0.0
+        hd95_list = 0.0
         count_matrix = np.ones((len(db_test), num_classes-1))
         for i_batch, sampled_batch in tqdm(enumerate(testloader)):
             image, label, case_name = sampled_batch["image"], sampled_batch["label"], sampled_batch['case_name'][0]
@@ -124,28 +126,34 @@ def inference(args, model, test_save_path=None):
                                          case=case_name)
             zero_label_flag = False
             for i in range(1, num_classes):
-                if not metric_i[i-1][1]:
+                if not metric_i[i-1][3]:
                     count_matrix[i_batch, i-1] = 0
                     zero_label_flag = True
-            metric_i = [element[0] for element in metric_i]
-            metric_list += np.array(metric_i)
-            logging.info('idx %d case %s mean_dice %f' %
-                         (i_batch, case_name, np.mean(metric_i, axis=0)))
+            dice_vals = [element[0] for element in metric_i]
+            iou_vals = [element[1] for element in metric_i]
+            hd95_vals = [element[2] for element in metric_i]
+            dice_list += np.array(dice_vals)
+            iou_list += np.array(iou_vals)
+            hd95_list += np.array(hd95_vals)
+            logging.info('idx %d case %s dice %f iou %f hd95 %f' %
+                         (i_batch, case_name, np.mean(dice_vals), np.mean(iou_vals), np.mean(hd95_vals)))
             logging.info("This case has zero label: %s" % zero_label_flag)
 
-        metric_list = metric_list / (count_matrix.sum(axis=0) + 1e-6)
+        valid_count = count_matrix.sum(axis=0) + 1e-6
+        dice_list = dice_list / valid_count
+        iou_list = iou_list / valid_count
+        hd95_list = hd95_list / valid_count
         for i in range(1, num_classes):
-            logging.info('Mean class %d mean_dice %f' % (i, metric_list[i-1]))
-        performance = np.mean(metric_list, axis=0)
-        logging.info('Testing performance in best val model: mean_dice : %f' % (performance))
+            logging.info('Mean class %d  DSC %f  IoU %f  HD95 %f' % (i, dice_list[i-1], iou_list[i-1], hd95_list[i-1]))
+        mean_dice = np.mean(dice_list, axis=0)
+        mean_iou = np.mean(iou_list, axis=0)
+        mean_hd95 = np.mean(hd95_list, axis=0)
+        logging.info('Testing seg performance: DSC=%f  IoU=%f  HD95=%f' % (mean_dice, mean_iou, mean_hd95))
 
+        task_tag = 'omni_seg_prompt@' if args.prompt else 'omni_seg@'
         with open("exp_out/result.csv", 'a', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            if args.prompt:
-                writer.writerow([dataset_name, 'omni_seg_prompt@'+args.output_dir, performance,
-                                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())])
-            else:
-                writer.writerow([dataset_name, 'omni_seg@'+args.output_dir, performance,
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow([dataset_name, task_tag + args.output_dir, mean_dice,
                                 time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())])
 
     cls_test_set = discover_dataset_names(args.root_path, "classification", "test")
@@ -165,7 +173,7 @@ def inference(args, model, test_save_path=None):
         model.eval()
 
         label_list = []
-        prediction_list = []
+        prediction_prob_list = []
         for i_batch, sampled_batch in tqdm(enumerate(testloader)):
             image, label, case_name = sampled_batch["image"], sampled_batch["label"], sampled_batch['case_name'][0]
             if args.prompt:
@@ -180,27 +188,50 @@ def inference(args, model, test_save_path=None):
                 with torch.no_grad():
                     output = model(image.cuda())[1]
 
-            output = np.argmax(torch.softmax(output, dim=1).data.cpu().numpy())
-            logging.info('idx %d case %s label: %d predict: %d' % (i_batch, case_name, label, output))
+            output_prob = torch.softmax(output, dim=1).data.cpu().numpy()
+            pred_cls = np.argmax(output_prob)
+            logging.info('idx %d case %s label: %d predict: %d' % (i_batch, case_name, label, pred_cls))
 
             label_list.append(label.numpy())
-            prediction_list.append(output)
+            prediction_prob_list.append(output_prob)
 
-        label_list = np.array(label_list)
-        prediction_list = np.array(prediction_list)
-        for i in range(num_classes):
-            logging.info('class %d acc %f' % (i, accuracy_score(
-                (label_list == i).astype(int), (prediction_list == i).astype(int))))
-        performance = accuracy_score(label_list, prediction_list)
-        logging.info('Testing performance in best val model: acc : %f' % (performance))
+        labels_flat = np.array(label_list).flatten().astype('uint8')
+        probs_all = np.concatenate(prediction_prob_list, axis=0)
+        preds_flat = np.argmax(probs_all, axis=1)
 
+        try:
+            label_onehot = np.eye(num_classes)[labels_flat]
+            auc_val = roc_auc_score(label_onehot, probs_all, multi_class='ovo')
+        except ValueError:
+            auc_val = 0.5
+
+        try:
+            macro_f1 = f1_score(labels_flat, preds_flat, average='macro')
+        except ValueError:
+            macro_f1 = 0.0
+
+        try:
+            pos_probs = probs_all[:, 1]
+            fpr, tpr, _ = roc_curve(labels_flat, pos_probs)
+            specificity_arr = 1.0 - fpr
+            valid_90 = np.where(specificity_arr >= 0.90)[0]
+            sens_at_spec90 = tpr[valid_90[-1]] if len(valid_90) > 0 else 0.0
+            valid_95 = np.where(specificity_arr >= 0.95)[0]
+            sens_at_spec95 = tpr[valid_95[-1]] if len(valid_95) > 0 else 0.0
+        except (ValueError, IndexError):
+            sens_at_spec90 = 0.0
+            sens_at_spec95 = 0.0
+
+        logging.info('--- %s Classification Results ---' % dataset_name)
+        logging.info('  AUC:            %f' % auc_val)
+        logging.info('  Macro F1-Score: %f' % macro_f1)
+        logging.info('  Sens@Spec90:    %f' % sens_at_spec90)
+        logging.info('  Sens@Spec95:    %f' % sens_at_spec95)
+
+        task_tag = 'omni_cls_prompt@' if args.prompt else 'omni_cls@'
         with open("exp_out/result.csv", 'a', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            if args.prompt:
-                writer.writerow([dataset_name, 'omni_cls_prompt@'+args.output_dir, performance,
-                                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())])
-            else:
-                writer.writerow([dataset_name, 'omni_cls@'+args.output_dir, performance,
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow([dataset_name, task_tag + args.output_dir, auc_val,
                                 time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())])
 
 

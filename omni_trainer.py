@@ -21,7 +21,7 @@ from datasets.dataset import USdatasetCls, USdatasetSeg
 from datasets.omni_dataset import WeightedRandomSamplerDDP
 from datasets.omni_dataset import USdatasetOmni_cls, USdatasetOmni_seg
 from datasets.dataset import RandomGenerator, CenterCropGenerator
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, f1_score, roc_curve
 from utils import omni_seg_test
 
 
@@ -276,7 +276,9 @@ def omni_train(args, model, snapshot_path):
                 val_loader = DataLoader(db_val, batch_size=1, shuffle=False, num_workers=8)
                 logging.info("{} val iterations per epoch".format(len(val_loader)))
 
-                metric_list = 0.0
+                dice_list = 0.0
+                iou_list = 0.0
+                hd95_list = 0.0
                 count_matrix = np.ones((len(db_val), num_classes-1))
                 for i_batch, sampled_batch in tqdm(enumerate(val_loader)):
                     image, label = sampled_batch["image"], sampled_batch["label"]
@@ -298,15 +300,24 @@ def omni_train(args, model, snapshot_path):
                                                  classes=num_classes)
 
                     for sample_index in range(len(metric_i)):
-                        if not metric_i[sample_index][1]:
+                        if not metric_i[sample_index][3]:
                             count_matrix[i_batch*batch_size+sample_index, 0] = 0
-                    metric_i = [element[0] for element in metric_i]
-                    metric_list += np.array(metric_i).sum()
+                    dice_vals = [element[0] for element in metric_i]
+                    iou_vals = [element[1] for element in metric_i]
+                    hd95_vals = [element[2] for element in metric_i]
+                    dice_list += np.array(dice_vals).sum()
+                    iou_list += np.array(iou_vals).sum()
+                    hd95_list += np.array(hd95_vals).sum()
 
-                metric_list = metric_list / (count_matrix.sum(axis=0) + 1e-6)
-                performance = np.mean(metric_list, axis=0)
+                valid_count = count_matrix.sum(axis=0) + 1e-6
+                dice_list = dice_list / valid_count
+                iou_list = iou_list / valid_count
+                hd95_list = hd95_list / valid_count
+                performance = np.mean(dice_list, axis=0)
 
-                writer.add_scalar('info/val_seg_metric_{}'.format(dataset_name), performance, epoch_num)
+                writer.add_scalar('info/val_seg_dice_{}'.format(dataset_name), performance, epoch_num)
+                writer.add_scalar('info/val_seg_iou_{}'.format(dataset_name), np.mean(iou_list, axis=0), epoch_num)
+                writer.add_scalar('info/val_seg_hd95_{}'.format(dataset_name), np.mean(hd95_list, axis=0), epoch_num)
 
                 seg_avg_performance += performance
 
@@ -346,23 +357,46 @@ def omni_train(args, model, snapshot_path):
                     else:
                         with torch.no_grad():
                             output = model(image.cuda())[1]
-                    # output shape is [B, C], so softmax should be on class dimension.
                     output_prob = torch.softmax(output, dim=1).data.cpu().numpy()
 
                     label_list.append(label.numpy())
                     prediction_prob_list.append(output_prob)
 
-                label_list = np.expand_dims(np.concatenate(
-                    (np.array(label_list[:-1]).flatten(), np.array(label_list[-1]).flatten())), axis=1).astype('uint8')
-                label_list_OneHot = np.eye(num_classes)[label_list].squeeze(1)
-                try:
-                    performance = roc_auc_score(label_list_OneHot, np.concatenate(
-                        (np.array(prediction_prob_list[:-1]).reshape(-1, 2), prediction_prob_list[-1])), multi_class='ovo')
-                except ValueError:
-                    # For tiny subsets, val split may contain only one class.
-                    performance = 0.5
+                labels_flat = np.concatenate(
+                    (np.array(label_list[:-1]).flatten(), np.array(label_list[-1]).flatten())).astype('uint8')
+                probs_all = np.concatenate(
+                    (np.array(prediction_prob_list[:-1]).reshape(-1, 2), prediction_prob_list[-1]))
+                preds_flat = np.argmax(probs_all, axis=1)
 
-                writer.add_scalar('info/val_cls_metric_{}'.format(dataset_name), performance, epoch_num)
+                try:
+                    label_list_OneHot = np.eye(num_classes)[labels_flat.reshape(-1, 1)].squeeze(1)
+                    auc_val = roc_auc_score(label_list_OneHot, probs_all, multi_class='ovo')
+                except ValueError:
+                    auc_val = 0.5
+
+                try:
+                    macro_f1 = f1_score(labels_flat, preds_flat, average='macro')
+                except ValueError:
+                    macro_f1 = 0.0
+
+                try:
+                    pos_probs = probs_all[:, 1]
+                    fpr, tpr, _ = roc_curve(labels_flat, pos_probs)
+                    specificity_arr = 1.0 - fpr
+                    valid_90 = np.where(specificity_arr >= 0.90)[0]
+                    sens_at_spec90 = tpr[valid_90[-1]] if len(valid_90) > 0 else 0.0
+                    valid_95 = np.where(specificity_arr >= 0.95)[0]
+                    sens_at_spec95 = tpr[valid_95[-1]] if len(valid_95) > 0 else 0.0
+                except (ValueError, IndexError):
+                    sens_at_spec90 = 0.0
+                    sens_at_spec95 = 0.0
+
+                performance = auc_val
+
+                writer.add_scalar('info/val_cls_auc_{}'.format(dataset_name), auc_val, epoch_num)
+                writer.add_scalar('info/val_cls_macro_f1_{}'.format(dataset_name), macro_f1, epoch_num)
+                writer.add_scalar('info/val_cls_sens@spec90_{}'.format(dataset_name), sens_at_spec90, epoch_num)
+                writer.add_scalar('info/val_cls_sens@spec95_{}'.format(dataset_name), sens_at_spec95, epoch_num)
 
                 cls_avg_performance += performance
 
