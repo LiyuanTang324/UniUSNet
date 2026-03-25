@@ -18,6 +18,7 @@ from utils import omni_seg_test
 from sklearn.metrics import roc_auc_score, f1_score, roc_curve
 
 from networks.omni_vision_transformer import OmniVisionTransformer as ViT_omni
+from thop import profile as thop_profile
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str,
@@ -83,6 +84,8 @@ def inference(args, model, test_save_path=None):
             writer = csv.writer(csvfile)
             writer.writerow(['dataset', 'task', 'metric', 'time'])
 
+    torch.cuda.reset_peak_memory_stats()
+
     seg_test_set = discover_dataset_names(args.root_path, "segmentation", "test")
 
     for dataset_name in seg_test_set:
@@ -101,9 +104,13 @@ def inference(args, model, test_save_path=None):
         dice_list = 0.0
         iou_list = 0.0
         hd95_list = 0.0
+        seg_total_time = 0.0
+        seg_total_samples = 0
         count_matrix = np.ones((len(db_test), num_classes-1))
         for i_batch, sampled_batch in tqdm(enumerate(testloader)):
             image, label, case_name = sampled_batch["image"], sampled_batch["label"], sampled_batch['case_name'][0]
+            torch.cuda.synchronize()
+            t_batch_start = time.time()
             if args.prompt:
                 position_prompt = sampled_batch['position_prompt'].float()
                 task_prompt = torch.FloatTensor([[1, 0]]).expand(position_prompt.shape[0], -1)
@@ -124,6 +131,9 @@ def inference(args, model, test_save_path=None):
                                          classes=num_classes,
                                          test_save_path=test_save_path,
                                          case=case_name)
+            torch.cuda.synchronize()
+            seg_total_time += time.time() - t_batch_start
+            seg_total_samples += image.shape[0]
             zero_label_flag = False
             for i in range(1, num_classes):
                 if not metric_i[i-1][3]:
@@ -149,6 +159,10 @@ def inference(args, model, test_save_path=None):
         mean_iou = np.mean(iou_list, axis=0)
         mean_hd95 = np.mean(hd95_list, axis=0)
         logging.info('Testing seg performance: DSC=%f  IoU=%f  HD95=%f' % (mean_dice, mean_iou, mean_hd95))
+        if seg_total_time > 0:
+            seg_fps = seg_total_samples / seg_total_time
+            logging.info('  Inference FPS: {:.2f} ({} samples in {:.2f}s)'.format(
+                seg_fps, seg_total_samples, seg_total_time))
 
         task_tag = 'omni_seg_prompt@' if args.prompt else 'omni_seg@'
         with open("exp_out/result.csv", 'a', newline='') as csvfile:
@@ -174,8 +188,12 @@ def inference(args, model, test_save_path=None):
 
         label_list = []
         prediction_prob_list = []
+        cls_total_time = 0.0
+        cls_total_samples = 0
         for i_batch, sampled_batch in tqdm(enumerate(testloader)):
             image, label, case_name = sampled_batch["image"], sampled_batch["label"], sampled_batch['case_name'][0]
+            torch.cuda.synchronize()
+            t_cls_start = time.time()
             if args.prompt:
                 position_prompt = sampled_batch['position_prompt'].float()
                 task_prompt = torch.FloatTensor([[0, 1]]).expand(position_prompt.shape[0], -1)
@@ -187,6 +205,9 @@ def inference(args, model, test_save_path=None):
             else:
                 with torch.no_grad():
                     output = model(image.cuda())[1]
+            torch.cuda.synchronize()
+            cls_total_time += time.time() - t_cls_start
+            cls_total_samples += image.shape[0]
 
             output_prob = torch.softmax(output, dim=1).data.cpu().numpy()
             pred_cls = np.argmax(output_prob)
@@ -227,12 +248,19 @@ def inference(args, model, test_save_path=None):
         logging.info('  Macro F1-Score: %f' % macro_f1)
         logging.info('  Sens@Spec90:    %f' % sens_at_spec90)
         logging.info('  Sens@Spec95:    %f' % sens_at_spec95)
+        if cls_total_time > 0:
+            cls_fps = cls_total_samples / cls_total_time
+            logging.info('  Inference FPS: {:.2f} ({} samples in {:.2f}s)'.format(
+                cls_fps, cls_total_samples, cls_total_time))
 
         task_tag = 'omni_cls_prompt@' if args.prompt else 'omni_cls@'
         with open("exp_out/result.csv", 'a', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow([dataset_name, task_tag + args.output_dir, auc_val,
                                 time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())])
+
+    vram_peak_mb = torch.cuda.max_memory_allocated() / (1024 ** 2)
+    logging.info('VRAM Peak: {:.2f} MB'.format(vram_peak_mb))
 
 
 if __name__ == "__main__":
@@ -281,6 +309,39 @@ if __name__ == "__main__":
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
     logging.info(str(args))
     logging.info(snapshot_name)
+
+    pytorch_total_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
+    logging.info("Total_params: {}".format(pytorch_total_params))
+
+    dummy_input = torch.randn(1, 1, args.img_size, args.img_size).cuda()
+    if args.prompt:
+        dummy_pp = torch.zeros(1, 8).float().cuda()
+        dummy_tp = torch.FloatTensor([[1, 0]]).cuda()
+        dummy_type = torch.zeros(1, 3).float().cuda()
+        dummy_nature = torch.zeros(1, 2).float().cuda()
+        flops, flop_params = thop_profile(net, inputs=((dummy_input, dummy_pp, dummy_tp, dummy_type, dummy_nature),))
+    else:
+        flops, flop_params = thop_profile(net, inputs=(dummy_input,))
+    logging.info('GFLOPs: {:.4f}  params: {:.0f}'.format(flops / 1e9, flop_params))
+
+    net.eval()
+    with torch.no_grad():
+        if args.prompt:
+            test_in = (dummy_input, dummy_pp, dummy_tp, dummy_type, dummy_nature)
+        else:
+            test_in = dummy_input
+        for _ in range(10):
+            _ = net(test_in)
+        torch.cuda.synchronize()
+        import time as _time
+        t_start = _time.time()
+        fps_iters = 100
+        for _ in range(fps_iters):
+            _ = net(test_in)
+        torch.cuda.synchronize()
+        t_end = _time.time()
+    fps = fps_iters / (t_end - t_start)
+    logging.info('FPS: {:.2f}'.format(fps))
 
     if args.is_saveout:
         args.test_save_dir = os.path.join(args.output_dir, "predictions")
