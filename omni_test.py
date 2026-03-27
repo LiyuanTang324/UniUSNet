@@ -79,10 +79,16 @@ def inference(args, model, test_save_path=None):
     import csv
     import time
 
-    if not os.path.exists("exp_out/result.csv"):
-        with open("exp_out/result.csv", 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(['dataset', 'task', 'metric', 'time'])
+    CSV_HEADER = [
+        "dataset", "task_type", "prompt",
+        "DSC", "IoU", "HD95",
+        "AUC", "Macro_F1", "Sens@Spec90", "Sens@Spec95",
+        "FPS", "time",
+    ]
+    csv_path = os.path.join(args.output_dir, "result.csv")
+    if not os.path.exists(csv_path):
+        with open(csv_path, 'w', newline='') as csvfile:
+            csv.writer(csvfile).writerow(CSV_HEADER)
 
     torch.cuda.reset_peak_memory_stats()
 
@@ -164,11 +170,15 @@ def inference(args, model, test_save_path=None):
             logging.info('  Inference FPS: {:.2f} ({} samples in {:.2f}s)'.format(
                 seg_fps, seg_total_samples, seg_total_time))
 
-        task_tag = 'omni_seg_prompt@' if args.prompt else 'omni_seg@'
-        with open("exp_out/result.csv", 'a', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile)
-            csv_writer.writerow([dataset_name, task_tag + args.output_dir, mean_dice,
-                                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())])
+        seg_fps = seg_total_samples / seg_total_time if seg_total_time > 0 else ""
+        with open(csv_path, 'a', newline='') as csvfile:
+            csv.writer(csvfile).writerow([
+                dataset_name, "segmentation", args.prompt,
+                f"{mean_dice:.4f}", f"{mean_iou:.4f}", f"{mean_hd95:.4f}",
+                "", "", "", "",
+                f"{seg_fps:.2f}" if seg_fps != "" else "",
+                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            ])
 
     cls_test_set = discover_dataset_names(args.root_path, "classification", "test")
 
@@ -253,11 +263,15 @@ def inference(args, model, test_save_path=None):
             logging.info('  Inference FPS: {:.2f} ({} samples in {:.2f}s)'.format(
                 cls_fps, cls_total_samples, cls_total_time))
 
-        task_tag = 'omni_cls_prompt@' if args.prompt else 'omni_cls@'
-        with open("exp_out/result.csv", 'a', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile)
-            csv_writer.writerow([dataset_name, task_tag + args.output_dir, auc_val,
-                                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())])
+        cls_fps = cls_total_samples / cls_total_time if cls_total_time > 0 else ""
+        with open(csv_path, 'a', newline='') as csvfile:
+            csv.writer(csvfile).writerow([
+                dataset_name, "classification", args.prompt,
+                "", "", "",
+                f"{auc_val:.4f}", f"{macro_f1:.4f}", f"{sens_at_spec90:.4f}", f"{sens_at_spec95:.4f}",
+                f"{cls_fps:.2f}" if cls_fps != "" else "",
+                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            ])
 
     vram_peak_mb = torch.cuda.max_memory_allocated() / (1024 ** 2)
     logging.info('VRAM Peak: {:.2f} MB'.format(vram_peak_mb))
@@ -313,7 +327,7 @@ if __name__ == "__main__":
     pytorch_total_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
     logging.info("Total_params: {}".format(pytorch_total_params))
 
-    dummy_input = torch.randn(1, 1, args.img_size, args.img_size).cuda()
+    dummy_input = torch.randn(1, 1, args.img_size, args.img_size, 3).cuda()
     if args.prompt:
         dummy_pp = torch.zeros(1, 8).float().cuda()
         dummy_tp = torch.FloatTensor([[1, 0]]).cuda()
