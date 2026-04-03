@@ -3,3 +3,4 @@ pretrained_ckpt/swin_tiny_patch4_window7_224.pth
 
 __pycache__/
 .ipynb_checkpoints/
+.vscode/
