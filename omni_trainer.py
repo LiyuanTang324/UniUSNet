@@ -375,9 +375,9 @@ def omni_train(args, model, snapshot_path):
                     auc_val = 0.5
 
                 try:
-                    macro_f1 = f1_score(labels_flat, preds_flat, average='macro')
+                    pos_f1 = f1_score(labels_flat, preds_flat, average='binary')
                 except ValueError:
-                    macro_f1 = 0.0
+                    pos_f1 = 0.0
 
                 try:
                     pos_probs = probs_all[:, 1]
@@ -394,7 +394,7 @@ def omni_train(args, model, snapshot_path):
                 performance = auc_val
 
                 writer.add_scalar('info/val_cls_auc_{}'.format(dataset_name), auc_val, epoch_num)
-                writer.add_scalar('info/val_cls_macro_f1_{}'.format(dataset_name), macro_f1, epoch_num)
+                writer.add_scalar('info/val_cls_pos_f1_{}'.format(dataset_name), pos_f1, epoch_num)
                 writer.add_scalar('info/val_cls_sens@spec90_{}'.format(dataset_name), sens_at_spec90, epoch_num)
                 writer.add_scalar('info/val_cls_sens@spec95_{}'.format(dataset_name), sens_at_spec95, epoch_num)
 

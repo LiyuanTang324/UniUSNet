@@ -82,7 +82,7 @@ def inference(args, model, test_save_path=None):
     CSV_HEADER = [
         "dataset", "task_type", "prompt",
         "DSC", "IoU", "HD95",
-        "AUC", "Macro_F1", "Sens@Spec90", "Sens@Spec95",
+        "AUC", "Pos_F1", "Sens@Spec90", "Sens@Spec95",
         "FPS", "time",
     ]
     csv_path = os.path.join(args.output_dir, "result.csv")
@@ -237,9 +237,9 @@ def inference(args, model, test_save_path=None):
             auc_val = 0.5
 
         try:
-            macro_f1 = f1_score(labels_flat, preds_flat, average='macro')
+            pos_f1 = f1_score(labels_flat, preds_flat, average='binary')
         except ValueError:
-            macro_f1 = 0.0
+            pos_f1 = 0.0
 
         try:
             pos_probs = probs_all[:, 1]
@@ -255,7 +255,7 @@ def inference(args, model, test_save_path=None):
 
         logging.info('--- %s Classification Results ---' % dataset_name)
         logging.info('  AUC:            %f' % auc_val)
-        logging.info('  Macro F1-Score: %f' % macro_f1)
+        logging.info('  Pos F1-Score:   %f' % pos_f1)
         logging.info('  Sens@Spec90:    %f' % sens_at_spec90)
         logging.info('  Sens@Spec95:    %f' % sens_at_spec95)
         if cls_total_time > 0:
@@ -268,7 +268,7 @@ def inference(args, model, test_save_path=None):
             csv.writer(csvfile).writerow([
                 dataset_name, "classification", args.prompt,
                 "", "", "",
-                f"{auc_val:.4f}", f"{macro_f1:.4f}", f"{sens_at_spec90:.4f}", f"{sens_at_spec95:.4f}",
+                f"{auc_val:.4f}", f"{pos_f1:.4f}", f"{sens_at_spec90:.4f}", f"{sens_at_spec95:.4f}",
                 f"{cls_fps:.2f}" if cls_fps != "" else "",
                 time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             ])
