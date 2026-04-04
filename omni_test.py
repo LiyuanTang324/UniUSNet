@@ -27,13 +27,13 @@ parser.add_argument('--output_dir', type=str, help='output dir')
 parser.add_argument('--max_epochs', type=int, default=200, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int, default=16,
                     help='batch_size per gpu')
-parser.add_argument('--img_size', type=int, default=256, help='input patch size of network input')
+parser.add_argument('--img_size', type=int, default=224, help='input patch size of network input')
 parser.add_argument('--is_saveout', action="store_true", help='whether to save results during inference')
 parser.add_argument('--test_save_dir', type=str, default='../predictions', help='saving prediction as nii!')
 parser.add_argument('--deterministic', type=int,  default=1, help='whether use deterministic training')
 parser.add_argument('--base_lr', type=float,  default=0.01, help='segmentation network learning rate')
 parser.add_argument('--seed', type=int, default=1234, help='random seed')
-parser.add_argument('--cfg', type=str, default="configs/swin_tiny_patch4_window8_256_lite.yaml",
+parser.add_argument('--cfg', type=str, default="configs/swin_tiny_patch4_window7_224_lite.yaml",
                     metavar="FILE", help='path to config file', )
 parser.add_argument(
     "--opts",
